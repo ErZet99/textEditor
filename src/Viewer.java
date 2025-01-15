@@ -7,18 +7,44 @@ import java.util.Arrays;
 
 public class Viewer {
 
+    private static LibC.Termios originalTermios;
+    private static int rows = 10;
+    private static int columns = 10;
+
     public static void main(String[] args) throws IOException {
         enableRawMode();
 
         while(true) {
-            int key = System.in.read();
-
-            if (key == 'q') {
-                System.out.println("\nExiting...");
-                break;
-            }
+            refreshScreen();
+            int key = readKey();
+            handleKey(key);
 
             System.out.print((char) key + " (" + key + ")\r\n");
+        }
+    }
+
+    private static void refreshScreen() {
+        System.out.print("\033[2J"); // Clear the screen
+        System.out.print("\033[H");  // Move the cursor to the top-left corner
+
+        for (int i=0; i<rows - 1; i++) {
+            System.out.println("~\r\n");
+        }
+
+        System.out.println("\033[7mPatryk W. Code's Editor - v0.0.1\033[m");
+    }
+
+    private static int readKey() throws IOException {
+        return System.in.read();
+    }
+
+    private static void handleKey(int key) {
+        if (key == 'q') {
+            System.out.print("\033[2J");
+            System.out.print("\033[H");
+            LibC.INSTANCE.tcsetattr(LibC.SYSTEM_OUT_FD, LibC.TCSAFLUSH, originalTermios);
+            System.out.println("\nExiting...");
+            System.exit(0);
         }
     }
 
@@ -31,6 +57,8 @@ public class Viewer {
             System.out.println(Native.getLastError());
             System.exit(rc);
         }
+
+        originalTermios = LibC.Termios.of(termios);
 
         termios.c_lflag &= ~(LibC.ECHO | LibC.ICANON | LibC.IEXTEN | LibC.ISIG);
         termios.c_iflag &= ~(LibC.IXON | LibC.ICRNL);
