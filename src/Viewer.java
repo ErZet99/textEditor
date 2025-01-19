@@ -47,7 +47,7 @@ public class Viewer {
                 .append(" ".repeat(Math.max(0, columns - statusMessage.length())))
                 .append("\033[0m");
 
-        System.out.print("\033[H"); //Reposition cursor
+        sb.append("\033[H"); //Reposition cursor
         System.out.println(sb);
     }
 
