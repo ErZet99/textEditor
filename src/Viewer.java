@@ -4,6 +4,7 @@ import com.sun.jna.Structure;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 public class Viewer {
 
@@ -13,6 +14,7 @@ public class Viewer {
 
     public static void main(String[] args) throws IOException {
         enableRawMode();
+        initEditor();
 
         while(true) {
             refreshScreen();
@@ -23,6 +25,12 @@ public class Viewer {
         }
     }
 
+    private static void initEditor() {
+        LibC.Winsize windowSize = getWindowSize();
+        columns = windowSize.ws_col;
+        rows = windowSize.ws_row;
+    }
+
     private static void refreshScreen() {
         System.out.print("\033[2J"); // Clear the screen
         System.out.print("\033[H");  // Move the cursor to the top-left corner
@@ -31,7 +39,10 @@ public class Viewer {
             System.out.println("~\r\n");
         }
 
-        System.out.println("\033[7mPatryk W. Code's Editor - v0.0.1\033[m");
+        String statusMessage = "Patryk W. Code's Editor - v0.0.1";
+        System.out.println("\033[7m" + statusMessage
+                + " ".repeat(Math.max(0, columns - statusMessage.length()))
+                + "\033[0m");
     }
 
     private static int readKey() throws IOException {
@@ -74,16 +85,41 @@ public class Viewer {
 
         System.out.println("Raw mode enabled. Press 'q' to quit.");
     }
+
+    private static LibC.Winsize getWindowSize() {
+        LibC.Winsize winsize = new LibC.Winsize();
+        isTermnial();
+
+        int rc = LibC.INSTANCE.ioctl(LibC.SYSTEM_OUT_FD, LibC.TIOCGWINSZ, winsize);
+        ioctlValidation(rc);
+
+        return winsize;
+    }
+
+    private static void ioctlValidation(int rc) {
+        if (rc != 0) {
+            System.err.println("ioctl() failed with return code: " + rc);
+            System.err.println("Error code: " + Native.getLastError());
+            System.exit(1);
+        }
+    }
+
+    private static void isTermnial() {
+        if (LibC.INSTANCE.isatty(LibC.SYSTEM_OUT_FD) == 0) {
+            System.err.println("Not a terminal");
+            System.exit(1);
+        }
+    }
 }
 
 interface LibC extends Library {
     // values defined in the native C headers (/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include)
-    int SYSTEM_OUT_FD = 0;            // Standard input file descriptor
+    int SYSTEM_OUT_FD = 1;            // Standard input file descriptor
     int ISIG = 0x00000080;            // Signal generation
     int ICANON = 0x00000100;          // Canonical input
     int ECHO = 0x00000008;            // Echo input characters
     int TCSAFLUSH = 2;                // Flush and set attributes
-    int IXON = 0x00000400;            // Enable XON/XOFF flow control
+    int IXON = 0x00000200; //0x00000400;            // Enable XON/XOFF flow control
     int ICRNL = 0x00000100;           // Map CR to NL on input
     int IEXTEN = 0x00000400;          // Enable extended functions
     int OPOST = 0x00000001;           // Post-process output
@@ -96,6 +132,24 @@ interface LibC extends Library {
 
     int tcgetattr(int fd, Termios termios);
     int tcsetattr(int fd, int optional_actions, Termios termios);
+    int ioctl(int fd, int request, Winsize winsize);
+    int isatty(int fd);
+
+    @Structure.FieldOrder(value = {"ws_row", "ws_col", "ws_xpixel", "ws_ypixel"})
+    class Winsize extends Structure {
+        public short ws_row, ws_col, ws_xpixel, ws_ypixel;
+        //public short ts_lines, ts_cols, ts_xxx, ts_yyy;
+
+        @Override
+        protected List<String> getFieldOrder() {
+            return List.of("ws_row", "ws_col", "ws_xpixel", "ws_ypixel");
+        }
+
+        public Winsize() {
+            super(ALIGN_NONE);
+            setAlignType(Structure.ALIGN_NONE);
+        }
+    }
 
     @Structure.FieldOrder(value = {"c_iflag", "c_oflag", "c_cflag", "c_lflag", "c_cc"})
     class Termios extends Structure {
