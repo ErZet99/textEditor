@@ -32,17 +32,23 @@ public class Viewer {
     }
 
     private static void refreshScreen() {
-        System.out.print("\033[2J"); // Clear the screen
-        System.out.print("\033[H");  // Move the cursor to the top-left corner
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("\033[2J"); // Clear the screen
+        sb.append("\033[H");  // Move the cursor to the top-left corner
 
         for (int i=0; i<rows - 1; i++) {
-            System.out.println("~\r\n");
+            sb.append("~\r\n");
         }
 
         String statusMessage = "Patryk W. Code's Editor - v0.0.1";
-        System.out.println("\033[7m" + statusMessage
-                + " ".repeat(Math.max(0, columns - statusMessage.length()))
-                + "\033[0m");
+        sb.append("\033[7m")
+                .append(statusMessage)
+                .append(" ".repeat(Math.max(0, columns - statusMessage.length())))
+                .append("\033[0m");
+
+        System.out.print("\033[H"); //Reposition cursor
+        System.out.println(sb);
     }
 
     private static int readKey() throws IOException {
