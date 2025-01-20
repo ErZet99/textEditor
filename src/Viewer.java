@@ -3,8 +3,11 @@ import com.sun.jna.Native;
 import com.sun.jna.Structure;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 public class Viewer {
 
@@ -24,7 +27,12 @@ public class Viewer {
 
     private static int cursorX = 0, cursorY = 0;
 
+    private static List<String> content = List.of();
+
     public static void main(String[] args) throws IOException {
+
+        openFile(args);
+
         enableRawMode();
         initEditor();
 
@@ -37,20 +45,40 @@ public class Viewer {
         }
     }
 
+    private static void openFile(String[] args) {
+        if (args.length == 1) {
+            String fileName = args[0];
+            Path path = Path.of(fileName);
+
+            if(Files.exists(path)) {
+                try (Stream<String> stream = Files.lines(path)) {
+                    content =  stream.toList();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
     private static void initEditor() {
         LibC.Winsize windowSize = getWindowSize();
-        columns = windowSize.ws_col;
+        columns = windowSize.ws_col - 1;
         rows = windowSize.ws_row - 1;
     }
 
     private static void refreshScreen() {
         StringBuilder sb = new StringBuilder();
 
-        sb.append("\033[2J"); // Clear the screen
+        //sb.append("\033[2J"); // Clear the screen
         sb.append("\033[H");  // Move the cursor to the top-left corner
 
         for (int i=0; i<rows - 1; i++) {
-            sb.append("~\r\n");
+            if(i >= content.size()) {
+                sb.append("~");
+            } else {
+                sb.append(content.get(i));
+            }
+            sb.append("\033[K\r\n");
         }
 
         String statusMessage = "Patryk W. Code's Editor - v0.0.1";
