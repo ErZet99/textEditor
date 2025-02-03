@@ -205,11 +205,31 @@ public class Viewer {
                 if (cursorX < columns - 1) {
                     cursorX++;
                 }
+            } case PAGE_UP, PAGE_DOWN -> {
+                if (key == PAGE_UP) {
+                    moveCursorToTopOffScreen();
+                } else if (key == PAGE_DOWN) {
+                    moveCursorToBottomOffScreen();
+                }
+
+                for (int i=0; i<rows; i++) {
+                    moveCursor(key == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+                }
             }
             case HOME -> cursorX = 0;
             case END ->  cursorX = columns - 1;
         }
     }
+
+    private static void moveCursorToTopOffScreen() {
+        cursorY = offsetY;
+    }
+
+    private static void moveCursorToBottomOffScreen() {
+        cursorY = offsetY + rows - 1;
+        if (cursorY > content.size()) cursorY = content.size();
+    }
+
 
     private static void enableRawMode() {
         LibC.Termios termios = new LibC.Termios();
