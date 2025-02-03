@@ -25,23 +25,29 @@ public class Viewer {
             PAGE_DOWN = 1007,
             DEL = 1008;
 
-    private static int cursorX = 0, cursorY = 0;
+    private static int cursorX = 0, cursorY = 0, offsetY = 0;
 
     private static List<String> content = List.of();
 
     public static void main(String[] args) throws IOException {
 
         openFile(args);
-
         enableRawMode();
         initEditor();
 
         while(true) {
+            scroll();
             refreshScreen();
             int key = readKey();
             handleKey(key);
+        }
+    }
 
-            //System.out.print((char) key + " (" + key + ")\r\n");
+    private static void scroll() {
+        if (cursorY >= rows + offsetY) {
+            offsetY = cursorY - rows + 1;
+        } else if (cursorY < offsetY) {
+            offsetY = cursorY;
         }
     }
 
@@ -62,33 +68,49 @@ public class Viewer {
 
     private static void initEditor() {
         LibC.Winsize windowSize = getWindowSize();
-        columns = windowSize.ws_col - 1;
+        columns = windowSize.ws_col;
         rows = windowSize.ws_row - 1;
     }
 
     private static void refreshScreen() {
         StringBuilder sb = new StringBuilder();
 
-        //sb.append("\033[2J"); // Clear the screen
+        drawCursorAtTopLeft(sb);
+        drawContent(sb);
+        drawStatusBar(sb);
+        drawCursor(sb);
+
+        System.out.print(sb);
+    }
+
+    private static void drawCursorAtTopLeft(StringBuilder sb) {
+        sb.append("\033[2J"); // Clear the screen
         sb.append("\033[H");  // Move the cursor to the top-left corner
+    }
 
-        for (int i=0; i<rows - 1; i++) {
-            if(i >= content.size()) {
-                sb.append("~");
-            } else {
-                sb.append(content.get(i));
-            }
-            sb.append("\033[K\r\n");
-        }
+    private static StringBuilder drawCursor(StringBuilder sb) {
+        return sb.append(String.format("\033[%d;%dH", cursorY - offsetY + 1, cursorX + 1));
+    }
 
-        String statusMessage = "Patryk W. Code's Editor - v0.0.1";
+    private static void drawStatusBar(StringBuilder sb) {
+        String statusMessage = "Rows: " + rows + " X: " + cursorX + " Y: " + cursorY + " Offset: " + offsetY;
         sb.append("\033[7m")
                 .append(statusMessage)
                 .append(" ".repeat(Math.max(0, columns - statusMessage.length())))
                 .append("\033[0m");
+    }
 
-        sb.append(String.format("\033[%d;%dH", cursorY + 1, cursorX + 1)); // Handle the cursor position
-        System.out.println(sb);
+    private static void drawContent(StringBuilder sb) {
+        for (int i=0; i<rows; i++) {
+            int fileI = offsetY + i;
+
+            if(fileI >= content.size()) {
+                sb.append("~");
+            } else {
+                sb.append(content.get(fileI));
+            }
+            sb.append("\033[K\r\n");
+        }
     }
 
     private static int readKey() throws IOException {
@@ -158,7 +180,7 @@ public class Viewer {
         System.out.print("\033[2J");
         System.out.print("\033[H");
         LibC.INSTANCE.tcsetattr(LibC.SYSTEM_OUT_FD, LibC.TCSAFLUSH, originalTermios);
-        System.out.println("\nExiting...");
+        //System.out.println("\nExiting...");
         System.exit(0);
     }
 
@@ -170,7 +192,7 @@ public class Viewer {
                 }
             }
             case ARROW_DOWN -> {
-                if (cursorY < rows - 1) {
+                if (cursorY < content.size()) {
                     cursorY++;
                 }
             }
@@ -213,7 +235,7 @@ public class Viewer {
             System.exit(1);
         }
 
-        System.out.println("Raw mode enabled. Press 'q' to quit.");
+        //System.out.println("Raw mode enabled. Press 'q' to quit.");
     }
 
     private static LibC.Winsize getWindowSize() {
