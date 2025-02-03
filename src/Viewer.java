@@ -222,7 +222,7 @@ public class Viewer {
                 }
             }
             case ARROW_RIGHT -> {
-                if (cursorX < content.get(cursorY).length() - 1) {
+                if (cursorX < content.get(cursorY).length()) {
                     cursorX++;
                 }
             } case PAGE_UP, PAGE_DOWN -> {
@@ -237,7 +237,7 @@ public class Viewer {
                 }
             }
             case HOME -> cursorX = 0;
-            case END ->  cursorX = columns - 1;
+            case END ->  cursorX = content.get(cursorY).length();
         }
     }
 
