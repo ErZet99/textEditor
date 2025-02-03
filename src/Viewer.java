@@ -25,7 +25,7 @@ public class Viewer {
             PAGE_DOWN = 1007,
             DEL = 1008;
 
-    private static int cursorX = 0, cursorY = 0, offsetY = 0;
+    private static int cursorX = 0, offsetX = 0, cursorY = 0, offsetY = 0;
 
     private static List<String> content = List.of();
 
@@ -48,6 +48,12 @@ public class Viewer {
             offsetY = cursorY - rows + 1;
         } else if (cursorY < offsetY) {
             offsetY = cursorY;
+        }
+
+        if (cursorX >= columns + offsetX) {
+            offsetX = cursorX - columns + 1;
+        } else if (cursorX < offsetX) {
+            offsetX = cursorX;
         }
     }
 
@@ -89,11 +95,11 @@ public class Viewer {
     }
 
     private static StringBuilder drawCursor(StringBuilder sb) {
-        return sb.append(String.format("\033[%d;%dH", cursorY - offsetY + 1, cursorX + 1));
+        return sb.append(String.format("\033[%d;%dH", cursorY - offsetY + 1, cursorX - offsetX + 1));
     }
 
     private static void drawStatusBar(StringBuilder sb) {
-        String statusMessage = "Rows: " + rows + " X: " + cursorX + " Y: " + cursorY + " Offset: " + offsetY;
+        String statusMessage = "Rows: " + rows + " X: " + cursorX + " Y: " + cursorY + " Offset X,Y: " + offsetX + " "  + offsetY;
         sb.append("\033[7m")
                 .append(statusMessage)
                 .append(" ".repeat(Math.max(0, columns - statusMessage.length())))
@@ -107,7 +113,21 @@ public class Viewer {
             if(fileI >= content.size()) {
                 sb.append("~");
             } else {
-                sb.append(content.get(fileI));
+                String line = content.get(fileI);
+                int lengthToDraw = line.length() - offsetX;
+
+                if (lengthToDraw < 0) {
+                    lengthToDraw = 0;
+                }
+                if (lengthToDraw > columns) {
+                    lengthToDraw = columns;
+                }
+
+                if (lengthToDraw > 0) {
+                    sb.append(line, offsetX, offsetX + lengthToDraw);
+                }
+
+
             }
             sb.append("\033[K\r\n");
         }
@@ -202,7 +222,7 @@ public class Viewer {
                 }
             }
             case ARROW_RIGHT -> {
-                if (cursorX < columns - 1) {
+                if (cursorX < content.get(cursorY).length() - 1) {
                     cursorX++;
                 }
             } case PAGE_UP, PAGE_DOWN -> {
