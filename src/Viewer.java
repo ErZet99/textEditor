@@ -205,6 +205,7 @@ public class Viewer {
     }
 
     private static void moveCursor(int key) {
+        String line = getCurrentLine();
         switch (key) {
             case ARROW_UP -> {
                 if (cursorY > 0) {
@@ -222,7 +223,7 @@ public class Viewer {
                 }
             }
             case ARROW_RIGHT -> {
-                if (cursorX < content.get(cursorY).length()) {
+                if (line != null && cursorX < line.length()) {
                     cursorX++;
                 }
             } case PAGE_UP, PAGE_DOWN -> {
@@ -237,8 +238,22 @@ public class Viewer {
                 }
             }
             case HOME -> cursorX = 0;
-            case END ->  cursorX = content.get(cursorY).length();
+            case END -> {
+                if (line != null) {
+                    cursorX = getCurrentLine().length();
+                }
+            }
         }
+
+        String newLine = getCurrentLine();
+        if (newLine != null && cursorX > newLine.length()) {
+            cursorX = newLine.length();
+        }
+
+    }
+
+    private static String getCurrentLine() {
+        return cursorY < content.size() ? content.get(cursorY) : null;
     }
 
     private static void moveCursorToTopOffScreen() {
