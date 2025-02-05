@@ -23,7 +23,8 @@ public class Viewer {
             END = 1005,
             PAGE_UP = 1006,
             PAGE_DOWN = 1007,
-            DEL = 1008;
+            DEL = 1008,
+            BACKSPACE = 127;
 
     private static int cursorX = 0, offsetX = 0, cursorY = 0, offsetY = 0;
 
@@ -36,7 +37,6 @@ public class Viewer {
         initEditor();
 
         while(true) {
-            scroll();
             refreshScreen();
             int key = readKey();
             handleKey(key);
@@ -81,6 +81,7 @@ public class Viewer {
     private static void refreshScreen() {
         StringBuilder sb = new StringBuilder();
 
+        scroll();
         drawCursorAtTopLeft(sb);
         drawContent(sb);
         drawStatusBar(sb);
@@ -98,12 +99,18 @@ public class Viewer {
         return sb.append(String.format("\033[%d;%dH", cursorY - offsetY + 1, cursorX - offsetX + 1));
     }
 
+    static String statusMessage;
+
     private static void drawStatusBar(StringBuilder sb) {
-        String statusMessage = "Rows: " + rows + " X: " + cursorX + " Y: " + cursorY + " Offset X,Y: " + offsetX + " "  + offsetY;
+        String message = statusMessage != null ? statusMessage : "Rows: " + rows + " X: " + cursorX + " Y: " + cursorY + " Offset X,Y: " + offsetX + " "  + offsetY;
         sb.append("\033[7m")
-                .append(statusMessage)
-                .append(" ".repeat(Math.max(0, columns - statusMessage.length())))
+                .append(message)
+                .append(" ".repeat(Math.max(0, columns - message.length())))
                 .append("\033[0m");
+    }
+
+    public static void setStatusMessage(String statusMessage) {
+        Viewer.statusMessage = statusMessage;
     }
 
     private static void drawContent(StringBuilder sb) {
@@ -122,12 +129,9 @@ public class Viewer {
                 if (lengthToDraw > columns) {
                     lengthToDraw = columns;
                 }
-
                 if (lengthToDraw > 0) {
                     sb.append(line, offsetX, offsetX + lengthToDraw);
                 }
-
-
             }
             sb.append("\033[K\r\n");
         }
@@ -188,12 +192,47 @@ public class Viewer {
     }
 
     private static void handleKey(int key) {
-        if (key == 'q') {
+        if (key == ctrl('q')) {
             exit();
+        } else if (key == ctrl('f')) {
+            editorFind();
         }
         else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END, PAGE_UP, PAGE_DOWN, DEL).contains(key)) {
             moveCursor(key);
         }
+    }
+
+    private static void editorFind() {
+        prompt("Search %s (Use ESC/Arrows/Enter)");
+    }
+
+    private static void prompt(String message) {
+        StringBuilder userInput = new StringBuilder();
+
+        while(true) {
+            try {
+                setStatusMessage(!userInput.isEmpty() ? userInput.toString() : message);
+                refreshScreen();
+                int key = readKey();
+
+                if (key == '\033' || key == '\r') {
+                    setStatusMessage(null);
+                    return;
+                } else if (key == DEL || key == BACKSPACE || key == ctrl('h')) {
+                    if (!userInput.isEmpty()) {
+                        userInput.deleteCharAt(userInput.length() - 1);
+                    }
+                } else if (!Character.isISOControl(key) && key < 128) {
+                    userInput.append((char) key);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private static int ctrl(char key) {
+        return key & 0x1f;
     }
 
     private static void exit() {
