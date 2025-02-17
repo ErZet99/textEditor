@@ -5,9 +5,11 @@ import com.sun.jna.Structure;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Viewer {
@@ -29,7 +31,7 @@ public class Viewer {
 
     private static int cursorX = 0, offsetX = 0, cursorY = 0, offsetY = 0;
 
-    private static List<String> content = List.of();
+    private static List<String> content = new ArrayList<>();
 
     public static void main(String[] args) throws IOException {
 
@@ -65,7 +67,7 @@ public class Viewer {
 
             if(Files.exists(path)) {
                 try (Stream<String> stream = Files.lines(path)) {
-                    content =  stream.toList();
+                    content =  stream.collect(Collectors.toCollection(ArrayList::new));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -195,12 +197,70 @@ public class Viewer {
     private static void handleKey(int key) {
         if (key == ctrl('q')) {
             exit();
+        } if (key == '\r') {
+            handleEnter();
         } else if (key == ctrl('f')) {
             editorFind();
-        }
-        else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END, PAGE_UP, PAGE_DOWN, DEL).contains(key)) {
+        } else if(List.of(DEL, BACKSPACE, ctrl('h')).contains(key)) {
+            deleteChar();
+        } else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END, PAGE_UP, PAGE_DOWN, DEL).contains(key)) {
             moveCursor(key);
+        } else {
+            insertChar((char) key);
         }
+    }
+
+    private static void deleteChar() {
+        if (cursorX == 0 && cursorY == 0) {
+            return;
+        }
+        if (cursorY == content.size()) {
+            return;
+        }
+
+        if (cursorX > 0) {
+            deleteCharacterFromRow(cursorY, cursorX - 1);
+            cursorX--;
+        }
+    }
+
+    private static void deleteCharacterFromRow(int row, int at) {
+        String line = content.get(row);
+        if (at < 0 || at > line.length()) return;
+        String editedLine = new StringBuilder(line).deleteCharAt(at).toString();
+        content.set(row, editedLine);
+    }
+
+    private static void handleEnter() {
+        if (cursorX == 0) {
+            insertRowAt(cursorY, "");
+        } else {
+            String line = content.get(cursorY);
+            insertRowAt(cursorY + 1, line.substring(cursorX));
+            content.set(cursorY, line.substring(0, cursorX));
+        }
+        cursorY++;
+        cursorX = 0;
+    }
+
+    private static void insertChar(char key) {
+        if (cursorY == content.size()) {
+            insertRowAt(cursorY, "");
+        }
+        insertCharInRow(cursorY, cursorX, key);
+        cursorX++;
+    }
+
+    private static void insertRowAt(int at, String rowContent) {
+        if (at < 0 || at > content.size()) return;
+        content.add(at, rowContent);
+    }
+
+    private static void insertCharInRow(int row, int at, char key) {
+        String line = content.get(row);
+        if (at < 0 || at > line.length()) at = line.length();
+        String editedLine = new StringBuilder(line).insert(at, key).toString();
+        content.set(row, editedLine);
     }
 
     enum SearchDirection {
