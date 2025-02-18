@@ -221,7 +221,21 @@ public class Viewer {
         if (cursorX > 0) {
             deleteCharacterFromRow(cursorY, cursorX - 1);
             cursorX--;
+        } else {
+            cursorX = content.get(cursorY - 1).length();
+            appendStringToRow(cursorY-1, content.get(cursorY));
+            deleteRow(cursorY);
+            cursorY--;
         }
+    }
+
+    private static void deleteRow(int at) {
+        if (at < 0 || at >= content.size()) return;
+        content.remove(at);
+    }
+
+    private static void appendStringToRow(int at, String append) {
+        content.set(at, content.get(at) + append);
     }
 
     private static void deleteCharacterFromRow(int row, int at) {
