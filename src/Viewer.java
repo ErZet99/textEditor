@@ -32,6 +32,7 @@ public class Viewer {
     private static int cursorX = 0, offsetX = 0, cursorY = 0, offsetY = 0;
 
     private static List<String> content = new ArrayList<>();
+    private static Path currentFile;
 
     public static void main(String[] args) throws IOException {
 
@@ -72,6 +73,8 @@ public class Viewer {
                     e.printStackTrace();
                 }
             }
+
+            currentFile = path;
         }
     }
 
@@ -197,6 +200,8 @@ public class Viewer {
     private static void handleKey(int key) {
         if (key == ctrl('q')) {
             exit();
+        } if (key == ctrl('s')) {
+            editorSave();
         } if (key == '\r') {
             handleEnter();
         } else if (key == ctrl('f')) {
@@ -207,6 +212,16 @@ public class Viewer {
             moveCursor(key);
         } else {
             insertChar((char) key);
+        }
+    }
+
+    private static void editorSave() {
+        try {
+            Files.write(currentFile, content);
+            setStatusMessage("File saved successfully");
+        } catch (IOException e) {
+            setStatusMessage("Error during saving file: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
