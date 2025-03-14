@@ -2,21 +2,20 @@ package com.erzet99.texteditor;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class Editor {
 
     Terminal terminal;
+    FileManager fileManager;
+
+    private static List<String> content = new ArrayList<>();
     private static int rows = 10;
     private static int columns = 10;
     private static int cursorX = 0, offsetX = 0, cursorY = 0, offsetY = 0;
-    private static List<String> content = new ArrayList<>();
-    private static Path currentFile;
+
 
     private static final int ARROW_UP = 1000
             ,ARROW_DOWN = 1001
@@ -32,8 +31,9 @@ public class Editor {
 
     public void run(String fileName) throws IOException {
         terminal = new Terminal();
+        fileManager = new FileManager(fileName);
 
-        openFile(fileName);
+        fileManager.getContentFromFile();
         terminal.enableRawMode();
         initEditor();
 
@@ -56,19 +56,6 @@ public class Editor {
         } else if (cursorX < offsetX) {
             offsetX = cursorX;
         }
-    }
-
-    private static void openFile(String fileName) {
-        Path path = Path.of(fileName);
-
-        if(Files.exists(path)) {
-            try (Stream<String> stream = Files.lines(path)) {
-                content =  stream.collect(Collectors.toCollection(ArrayList::new));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        currentFile = path;
     }
 
     private  void initEditor() {
@@ -194,7 +181,7 @@ public class Editor {
         if (key == ctrl('q')) {
             terminal.exit();
         } if (key == ctrl('s')) {
-            editorSave();
+            saveToFile();
         } if (key == '\r') {
             handleEnter();
         } else if (key == ctrl('f')) {
@@ -208,15 +195,11 @@ public class Editor {
         }
     }
 
-    private static void editorSave() {
-        try {
-            Files.write(currentFile, content);
-            setStatusMessage("File saved successfully");
-        } catch (IOException e) {
-            setStatusMessage("Error during saving file: " + e.getMessage());
-            e.printStackTrace();
-        }
+    private void saveToFile() {
+        String result = fileManager.saveContentToFile(content);
+        setStatusMessage(result);
     }
+
 
     private static void deleteChar() {
         if (cursorX == 0 && cursorY == 0) {
