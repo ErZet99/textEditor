@@ -12,12 +12,13 @@ import static com.erzet99.texteditor.KeyConstants.*;
 public class Editor {
 
     private Terminal terminal;
-    private static ContentManager contentManager;
+    private Cursor cursor;
+    private ContentManager contentManager;
 
     private static int rows = 10;
     private static int columns = 10;
 
-    private static int cursorX = 0, offsetX = 0, cursorY = 0, offsetY = 0;
+   // private static int cursorX = 0, offsetX = 0, cursorY = 0, offsetY = 0;
     static String statusMessage;
 
     public void run(String fileName) throws IOException {
@@ -27,16 +28,13 @@ public class Editor {
         contentManager = new ContentManager();
         contentManager.setContent(getContentFromFile(fileName));
 
-        initEditor();
+        cursor = new Cursor();
 
-        System.out.println(FileManager.currentFile.toString());
+        initEditor();
 
         while(true) {
             refreshScreen();
             int key = readKey();
-            if (key == ctrl('q')) {
-                terminal.exit();
-            }
             handleKey(key);
         }
     }
@@ -101,7 +99,7 @@ public class Editor {
         }
     }
 
-    public static void refreshScreen() {
+    public void refreshScreen() {
         StringBuilder sb = new StringBuilder();
 
         scroll();
@@ -113,17 +111,19 @@ public class Editor {
         System.out.print(sb);
     }
 
-    private static void scroll() {
-        if (cursorY >= rows + offsetY) {
-            offsetY = cursorY - rows + 1;
-        } else if (cursorY < offsetY) {
-            offsetY = cursorY;
+
+    // ToDO can be simplified
+    private void scroll() {
+        if (cursor.getY() >= rows + cursor.getOffsetY()) {
+            cursor.setOffsetY(cursor.getY() - rows + 1);
+        } else if (cursor.getY() < cursor.getOffsetY()) {
+            cursor.setOffsetY(cursor.getY());
         }
 
-        if (cursorX >= columns + offsetX) {
-            offsetX = cursorX - columns + 1;
-        } else if (cursorX < offsetX) {
-            offsetX = cursorX;
+        if (cursor.getX() >= columns + cursor.getOffsetX()) {
+            cursor.setOffsetX(cursor.getX() - columns + 1);
+        } else if (cursor.getX() < cursor.getOffsetX()) {
+            cursor.setOffsetX(cursor.getX());
         }
     }
 
@@ -132,15 +132,15 @@ public class Editor {
         sb.append("\033[H");  // Move the cursor to the top-left corner
     }
 
-    private static void drawContent(StringBuilder sb) {
+    private void drawContent(StringBuilder sb) {
         for (int i=0; i<rows; i++) {
-            int fileI = offsetY + i;
+            int fileI = cursor.getOffsetY() + i;
 
             if(fileI >= contentManager.size()) {
                 sb.append("~");
             } else {
                 String line = contentManager.getLine(fileI);
-                int lengthToDraw = line.length() - offsetX;
+                int lengthToDraw = line.length() - cursor.getOffsetX();
 
                 if (lengthToDraw < 0) {
                     lengthToDraw = 0;
@@ -149,90 +149,90 @@ public class Editor {
                     lengthToDraw = columns;
                 }
                 if (lengthToDraw > 0) {
-                    sb.append(line, offsetX, offsetX + lengthToDraw);
+                    sb.append(line, cursor.getOffsetX(), cursor.getOffsetX() + lengthToDraw);
                 }
             }
             sb.append("\033[K\r\n");
         }
     }
 
-    private static void drawStatusBar(StringBuilder sb) {
-        String message = statusMessage != null ? statusMessage : "Rows: " + rows + " X: " + cursorX + " Y: " + cursorY + " Offset X,Y: " + offsetX + " "  + offsetY;
+    private void drawStatusBar(StringBuilder sb) {
+        String message = statusMessage != null ? statusMessage : "Rows: " + rows + " X: " + cursor.getX() + " Y: " + cursor.getY() + " Offset X,Y: " + cursor.getOffsetX() + " "  + cursor.getOffsetY();
         sb.append("\033[7m")
                 .append(message)
                 .append(" ".repeat(Math.max(0, columns - message.length())))
                 .append("\033[0m");
     }
 
-    private static StringBuilder drawCursor(StringBuilder sb) {
-        return sb.append(String.format("\033[%d;%dH", cursorY - offsetY + 1, cursorX - offsetX + 1));
+    private StringBuilder drawCursor(StringBuilder sb) {
+        return sb.append(String.format("\033[%d;%dH", cursor.getY() - cursor.getOffsetY() + 1, cursor.getX() - cursor.getOffsetX() + 1));
     }
 
     public static void setStatusMessage(String statusMessage) {
         statusMessage = statusMessage;
     }
 
-    private static void deleteChar() {
-        if (cursorX == 0 && cursorY == 0) {
+    private void deleteChar() {
+        if (cursor.getX() == 0 && cursor.getY() == 0) {
             return;
         }
-        if (cursorY == contentManager.size()) {
+        if (cursor.getY() == contentManager.size()) {
             return;
         }
 
-        if (cursorX > 0) {
-            deleteCharacterFromRow(cursorY, cursorX - 1);
-            cursorX--;
+        if (cursor.getX() > 0) {
+            deleteCharacterFromRow(cursor.getY(), cursor.getX() - 1);
+            cursor.moveLeft();
         } else {
-            cursorX = contentManager.getLine(cursorY - 1).length();
-            appendStringToRow(cursorY-1, contentManager.getLine(cursorY));
-            deleteRow(cursorY);
-            cursorY--;
+            cursor.setX(contentManager.getLine(cursor.getY() - 1).length());
+            appendStringToRow(cursor.getY()-1, contentManager.getLine(cursor.getY()));
+            deleteRow(cursor.getY());
+            cursor.moveUp();
         }
     }
 
-    private static void deleteRow(int at) {
+    private void deleteRow(int at) {
         if (at < 0 || at >= contentManager.size()) return;
         contentManager.removeLine(at);
     }
 
-    private static void appendStringToRow(int at, String append) {
+    private void appendStringToRow(int at, String append) {
         contentManager.setLine(at, contentManager.getLine(at) + append);
     }
 
-    private static void deleteCharacterFromRow(int row, int at) {
+    private void deleteCharacterFromRow(int row, int at) {
         String line = contentManager.getLine(row);
         if (at < 0 || at > line.length()) return;
         String editedLine = new StringBuilder(line).deleteCharAt(at).toString();
         contentManager.setLine(row, editedLine);
     }
 
-    private static void handleEnter() {
-        if (cursorX == 0) {
-            insertRowAt(cursorY, "");
+    private void handleEnter() {
+        if (cursor.getX() == 0) {
+            insertRowAt(cursor.getY(), "");
         } else {
-            String line = contentManager.getLine(cursorY);
-            insertRowAt(cursorY + 1, line.substring(cursorX));
-            contentManager.setLine(cursorY, line.substring(0, cursorX));
+            String line = contentManager.getLine(cursor.getY());
+            insertRowAt(cursor.getY() + 1, line.substring(cursor.getX()));
+            contentManager.setLine(cursor.getY(), line.substring(0, cursor.getX()));
         }
-        cursorY++;
-        cursorX = 0;
+        cursor.moveDown(contentManager.size());
+        cursor.setX(0);
     }
 
-    private static void insertChar(char key) {
-        if (cursorY == contentManager.size()) {
-            insertRowAt(cursorY, "");
+    private void insertChar(char key) {
+        if (cursor.getY() == contentManager.size()) {
+            insertRowAt(cursor.getY(), "");
         }
-        insertCharInRow(cursorY, cursorX, key);
-        cursorX++;
+        insertCharInRow(cursor.getY(), cursor.getX(), key);
+        cursor.moveRight(getCurrentLine().length());
     }
 
-    private static void insertRowAt(int at, String rowContent) {
+    private void insertRowAt(int at, String rowContent) {
         if (at < 0 || at > contentManager.size()) return;
         contentManager.addLine(at, rowContent);
     }
 
-    private static void insertCharInRow(int row, int at, char key) {
+    private void insertCharInRow(int row, int at, char key) {
         String line = contentManager.getLine(row);
         if (at < 0 || at > line.length()) at = line.length();
         String editedLine = new StringBuilder(line).insert(at, key).toString();
@@ -246,7 +246,7 @@ public class Editor {
     static SearchDirection searchDirection = SearchDirection.FORWARD;
     static int lastMatch = -1;
 
-    private static void editorFind() {
+    private void editorFind() {
         prompt("Search %s (Use ESC/Arrows/Enter)", (query, lastKeyPress) -> {
             if(query == null || query.isEmpty()) {
                 searchDirection = SearchDirection.FORWARD;
@@ -279,16 +279,16 @@ public class Editor {
 
                 if (match != -1) {
                     lastMatch = currentIndex;
-                    cursorY = currentIndex;
-                    cursorX = match;
-                    offsetY = contentManager.size();
+                    cursor.setY(currentIndex);
+                    cursor.setX(match);
+                    cursor.setOffsetY(contentManager.size());
                     break;
                 }
             }
         });
     }
 
-    private static void prompt(String message, BiConsumer<String, Integer> consumer) {
+    private void prompt(String message, BiConsumer<String, Integer> consumer) {
         StringBuilder userInput = new StringBuilder();
 
         while(true) {
@@ -317,27 +317,27 @@ public class Editor {
     }
 
 
-    private static void moveCursor(int key) {
+    private void moveCursor(int key) {
         String line = getCurrentLine();
         switch (key) {
             case ARROW_UP -> {
-                if (cursorY > 0) {
-                    cursorY--;
+                if (cursor.getY() > 0) {
+                    cursor.moveUp();
                 }
             }
             case ARROW_DOWN -> {
-                if (cursorY < contentManager.size()) {
-                    cursorY++;
+                if (cursor.getY() < contentManager.size()) {
+                    cursor.moveDown(contentManager.size());
                 }
             }
             case ARROW_LEFT -> {
-                if (cursorX > 0) {
-                    cursorX--;
+                if (cursor.getX() > 0) {
+                    cursor.moveLeft();
                 }
             }
             case ARROW_RIGHT -> {
-                if (line != null && cursorX < line.length()) {
-                    cursorX++;
+                if (line != null && cursor.getX() < line.length()) {
+                    cursor.moveRight(line.length());
                 }
             } case PAGE_UP, PAGE_DOWN -> {
                 if (key == PAGE_UP) {
@@ -350,41 +350,43 @@ public class Editor {
                     moveCursor(key == PAGE_UP ? ARROW_UP : ARROW_DOWN);
                 }
             }
-            case HOME -> cursorX = 0;
+            case HOME -> cursor.setX(0);
             case END -> {
                 if (line != null) {
-                    cursorX = getCurrentLine().length();
+                    cursor.setX(getCurrentLine().length());
                 }
             }
         }
 
         String newLine = getCurrentLine();
-        if (newLine != null && cursorX > newLine.length()) {
-            cursorX = newLine.length();
+        if (newLine != null && cursor.getX() > newLine.length()) {
+            cursor.setX(newLine.length());
         }
 
     }
 
-    private static String getCurrentLine() {
-        return cursorY < contentManager.size() ? contentManager.getLine(cursorY) : null;
+    private String getCurrentLine() {
+        return cursor.getY() < contentManager.size() ? contentManager.getLine(cursor.getY()) : null;
     }
 
-    private static void moveCursorToTopOffScreen() {
-        cursorY = offsetY;
+    private void moveCursorToTopOffScreen() {
+        cursor.setY(cursor.getOffsetY());
     }
 
-    private static void moveCursorToBottomOffScreen() {
-        cursorY = offsetY + rows - 1;
-        if (cursorY > contentManager.size()) cursorY = contentManager.size();
+    private void moveCursorToBottomOffScreen() {
+        cursor.setY(cursor.getOffsetY() + rows - 1);
+        if (cursor.getY() > contentManager.size()) cursor.setY(contentManager.size());
     }
 
-    private static void saveToFile() {
+    private void saveToFile() {
         String result = saveContentToFile(contentManager.getContent());
         setStatusMessage(result);
     }
 
-    public static void handleKey(int key) {
-        if (key == ctrl('s')) {
+    public void handleKey(int key) {
+        if (key == ctrl('q')) {
+            terminal.exit();
+        } else if (key == ctrl('s')) {
             saveToFile();
         } else if (key == '\r') {
             handleEnter();

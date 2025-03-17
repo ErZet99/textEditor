@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ContentManager {
-    List<String> content = new ArrayList<>();
+    private List<String> content = new ArrayList<>();
 
     public List<String> getContent() {
         return content;

@@ -5,6 +5,10 @@ import com.sun.jna.Native;
 public class Terminal {
     private LibC.Termios originalTermios;
 
+    // tutaj mozna wsadzic prywany winsize jako parametr, udostepnic obiekt Terminala jako rows i columns
+    // publiczne gettery i settery do columns rows
+    // publizcna metoda exit() i tylo
+
     public void enableRawMode() {
         LibC.Termios termios = new LibC.Termios();
         int rc = LibC.INSTANCE.tcgetattr(LibC.SYSTEM_OUT_FD, termios);
@@ -28,8 +32,6 @@ public class Terminal {
             System.err.println("tcsetattr failed");
             System.exit(1);
         }
-
-        //System.out.println("Raw mode enabled. Press 'q' to quit.");
     }
 
     public LibC.Winsize getWindowSize() {
