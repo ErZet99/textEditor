@@ -1,16 +1,13 @@
 # Text Editor
-================
 
 TextEditor is a simple Java-based text editor application. It uses Java Native Access (JNA) for certain functionalities.
 
 ## Features
-------------
 
 - **Text Editing**: Create, edit, and save text files.
 - **Terminal Integration**: Runs directly in the macOS terminal
 
 ## Getting Started
--------------------
 
 ### Prerequisites
 

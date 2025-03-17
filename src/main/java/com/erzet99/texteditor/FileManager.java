@@ -9,14 +9,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class FileManager {
-    private static Path currentFile;
+    public static Path currentFile;
 
-    public FileManager(String fileName) {
+    public static List<String> getContentFromFile(String fileName) {
         Path path = Path.of(fileName);
         currentFile = path;
-    }
-
-    public static List<String> getContentFromFile() {
         if(Files.exists(currentFile)) {
             try (Stream<String> stream = Files.lines(currentFile)) {
                 List<String> content =  stream.collect(Collectors.toCollection(ArrayList::new));
