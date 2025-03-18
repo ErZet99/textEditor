@@ -15,22 +15,17 @@ public class Editor {
     private Cursor cursor;
     private ContentManager contentManager;
 
-    private static int rows = 10;
-    private static int columns = 10;
-
-   // private static int cursorX = 0, offsetX = 0, cursorY = 0, offsetY = 0;
     static String statusMessage;
 
     public void run(String fileName) throws IOException {
         terminal = new Terminal();
-        terminal.enableRawMode();
 
         contentManager = new ContentManager();
         contentManager.setContent(getContentFromFile(fileName));
 
         cursor = new Cursor();
 
-        initEditor();
+        //initEditor();
 
         while(true) {
             refreshScreen();
@@ -39,11 +34,11 @@ public class Editor {
         }
     }
 
-    private  void initEditor() {
-        LibC.Winsize windowSize = terminal.getWindowSize();
-        columns = windowSize.ws_col;
-        rows = windowSize.ws_row - 1;
-    }
+    //private  void initEditor() {
+    //    LibC.Winsize windowSize = terminal.getWindowSize();
+    //    columns = windowSize.ws_col;
+    //    rows = windowSize.ws_row - 1;
+    //}
 
     public static int readKey() throws IOException {
         int key =  System.in.read();
@@ -114,14 +109,14 @@ public class Editor {
 
     // ToDO can be simplified
     private void scroll() {
-        if (cursor.getY() >= rows + cursor.getOffsetY()) {
-            cursor.setOffsetY(cursor.getY() - rows + 1);
+        if (cursor.getY() >= terminal.getRows() + cursor.getOffsetY()) {
+            cursor.setOffsetY(cursor.getY() - terminal.getRows() + 1);
         } else if (cursor.getY() < cursor.getOffsetY()) {
             cursor.setOffsetY(cursor.getY());
         }
 
-        if (cursor.getX() >= columns + cursor.getOffsetX()) {
-            cursor.setOffsetX(cursor.getX() - columns + 1);
+        if (cursor.getX() >= terminal.getColumns() + cursor.getOffsetX()) {
+            cursor.setOffsetX(cursor.getX() - terminal.getColumns() + 1);
         } else if (cursor.getX() < cursor.getOffsetX()) {
             cursor.setOffsetX(cursor.getX());
         }
@@ -133,7 +128,7 @@ public class Editor {
     }
 
     private void drawContent(StringBuilder sb) {
-        for (int i=0; i<rows; i++) {
+        for (int i=0; i< terminal.getRows(); i++) {
             int fileI = cursor.getOffsetY() + i;
 
             if(fileI >= contentManager.size()) {
@@ -145,8 +140,8 @@ public class Editor {
                 if (lengthToDraw < 0) {
                     lengthToDraw = 0;
                 }
-                if (lengthToDraw > columns) {
-                    lengthToDraw = columns;
+                if (lengthToDraw > terminal.getColumns()) {
+                    lengthToDraw = terminal.getColumns();
                 }
                 if (lengthToDraw > 0) {
                     sb.append(line, cursor.getOffsetX(), cursor.getOffsetX() + lengthToDraw);
@@ -157,10 +152,10 @@ public class Editor {
     }
 
     private void drawStatusBar(StringBuilder sb) {
-        String message = statusMessage != null ? statusMessage : "Rows: " + rows + " X: " + cursor.getX() + " Y: " + cursor.getY() + " Offset X,Y: " + cursor.getOffsetX() + " "  + cursor.getOffsetY();
+        String message = statusMessage != null ? statusMessage : "Rows: " + terminal.getRows() + " X: " + cursor.getX() + " Y: " + cursor.getY() + " Offset X,Y: " + cursor.getOffsetX() + " "  + cursor.getOffsetY();
         sb.append("\033[7m")
                 .append(message)
-                .append(" ".repeat(Math.max(0, columns - message.length())))
+                .append(" ".repeat(Math.max(0, terminal.getColumns() - message.length())))
                 .append("\033[0m");
     }
 
@@ -168,8 +163,8 @@ public class Editor {
         return sb.append(String.format("\033[%d;%dH", cursor.getY() - cursor.getOffsetY() + 1, cursor.getX() - cursor.getOffsetX() + 1));
     }
 
-    public static void setStatusMessage(String statusMessage) {
-        statusMessage = statusMessage;
+    public void setStatusMessage(String statusMessage) {
+        this.statusMessage = statusMessage;
     }
 
     private void deleteChar() {
@@ -346,7 +341,7 @@ public class Editor {
                     moveCursorToBottomOffScreen();
                 }
 
-                for (int i=0; i<rows; i++) {
+                for (int i=0; i< terminal.getRows(); i++) {
                     moveCursor(key == PAGE_UP ? ARROW_UP : ARROW_DOWN);
                 }
             }
@@ -374,7 +369,7 @@ public class Editor {
     }
 
     private void moveCursorToBottomOffScreen() {
-        cursor.setY(cursor.getOffsetY() + rows - 1);
+        cursor.setY(cursor.getOffsetY() + terminal.getRows() - 1);
         if (cursor.getY() > contentManager.size()) cursor.setY(contentManager.size());
     }
 

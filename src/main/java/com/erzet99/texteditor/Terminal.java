@@ -4,12 +4,31 @@ import com.sun.jna.Native;
 
 public class Terminal {
     private LibC.Termios originalTermios;
-
+    private LibC.Winsize winsize;
     // tutaj mozna wsadzic prywany winsize jako parametr, udostepnic obiekt Terminala jako rows i columns
     // publiczne gettery i settery do columns rows
     // publizcna metoda exit() i tylo
+    // wtedy w mainie mozna by bylo zrobic Terminal terminal = new Terminal();
+    // terminal.getWinsize().getColumns();
+    // terminal.getWinsize().getRows();
+    // terminal.exit();
+    // i byloby git
+    // a tak to jest jakis syf
 
-    public void enableRawMode() {
+    public Terminal() {
+        enableRawMode();
+        this.winsize = getWindowSize();
+    }
+
+    public int getColumns() {
+        return winsize.ws_col;
+    }
+
+    public int getRows() {
+        return winsize.ws_row;
+    }
+
+    private void enableRawMode() {
         LibC.Termios termios = new LibC.Termios();
         int rc = LibC.INSTANCE.tcgetattr(LibC.SYSTEM_OUT_FD, termios);
 
@@ -25,16 +44,13 @@ public class Terminal {
         termios.c_iflag &= ~(LibC.IXON | LibC.ICRNL);
         termios.c_oflag &= ~(LibC.OPOST);
 
-        //termios.c_cc[LibC.VMIN] = 0;
-        //termios.c_cc[LibC.VTIME] = 1;
-
         if (LibC.INSTANCE.tcsetattr(LibC.SYSTEM_OUT_FD, LibC.TCSAFLUSH, termios) == -1 ) {
             System.err.println("tcsetattr failed");
             System.exit(1);
         }
     }
 
-    public LibC.Winsize getWindowSize() {
+    private LibC.Winsize getWindowSize() {
         LibC.Winsize winsize = new LibC.Winsize();
         isTermnial();
 
