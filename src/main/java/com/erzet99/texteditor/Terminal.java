@@ -5,7 +5,7 @@ import com.sun.jna.Native;
 public class Terminal {
     private LibC.Termios originalTermios;
     private LibC.Winsize winsize;
-    // tutaj mozna wsadzic prywany winsize jako parametr, udostepnic obiekt Terminala jako rows i columns
+    // tutaj mozna wsadzic prywany winsize, udostepnic tylko rows i columns
     // publiczne gettery i settery do columns rows
     // publizcna metoda exit() i tylo
     // wtedy w mainie mozna by bylo zrobic Terminal terminal = new Terminal();
@@ -14,6 +14,7 @@ public class Terminal {
     // terminal.exit();
     // i byloby git
     // a tak to jest jakis syf
+
 
     public Terminal() {
         enableRawMode();
@@ -25,7 +26,7 @@ public class Terminal {
     }
 
     public int getRows() {
-        return winsize.ws_row;
+        return winsize.ws_row - 1;
     }
 
     private void enableRawMode() {
